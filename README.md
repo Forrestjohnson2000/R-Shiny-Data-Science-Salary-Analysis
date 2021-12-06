@@ -23,5 +23,5 @@ Link to data source: https://www.kaggle.com/jackogozaly/data-science-and-stem-sa
 
 1. Download the "Salary Rshiny Dashboard Master" folder from this GitHub repository
 2. Open the "Salary Rshiny Dashboard Master.Rproj" R Project file in RStudio
-3. Open the app.R file 
+3. Open the "app.R" file 
 4. Click "Run App" from the code panel
