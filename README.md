@@ -12,3 +12,7 @@ Explore the tabs in this app to compare the top companies employing data scienti
 
 Link to our RShiny Application:
 https://visualanalyticsfj.shinyapps.io/Salary-RShiny-Dashboard-Master/
+
+## Data Source
+
+Link to data source: https://www.kaggle.com/jackogozaly/data-science-and-stem-salaries
