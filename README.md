@@ -15,4 +15,6 @@ https://visualanalyticsfj.shinyapps.io/Salary-RShiny-Dashboard-Master/
 
 ## Data Source
 
+We retrieved this data from Kaggle.com, where it had been scraped from Levels.fyi. It contains over 62,000 records from top companies in the data science industry.
+
 Link to data source: https://www.kaggle.com/jackogozaly/data-science-and-stem-salaries
