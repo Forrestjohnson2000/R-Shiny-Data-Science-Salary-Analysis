@@ -18,3 +18,10 @@ https://visualanalyticsfj.shinyapps.io/Salary-RShiny-Dashboard-Master/
 We retrieved this data from Kaggle.com, where it had been scraped from Levels.fyi. It contains over 62,000 records from top companies in the data science industry.
 
 Link to data source: https://www.kaggle.com/jackogozaly/data-science-and-stem-salaries
+
+## Reproduce Application
+
+1. Download the "Salary Rshiny Dashboard Master" folder from this GitHub repository
+2. Open the "Salary Rshiny Dashboard Master.Rproj" R Project file in RStudio
+3. Open app.R
+4. Click "Run App" from the code panel.
