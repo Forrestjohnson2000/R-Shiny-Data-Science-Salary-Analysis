@@ -34,6 +34,8 @@ ui <- fluidPage(
                      hr(),
                      radioButtons("overview_display", "What would you like to display?",
                                   choices = c("Number of Jobs", "Average Yearly Compensation")),
+                     br(),
+                     img(src = "logo.png", width="40%", height="40%", alt = "levels.fyi Logo")
                    ),
                    mainPanel(
                      plotOutput("overview", height="600px",width="600px")
@@ -50,7 +52,9 @@ ui <- fluidPage(
                                  selected=companies, multiple=TRUE),
                      p("Select which job titles to include from the dropdown menu below. Only companies employing this role will be displayed."),
                      selectInput(inputId="map_title", label="Select titles:", choices=titles, selected="All"),
-                     p("The table to the right displays an overview of the selected companies and titles.")
+                     p("The table to the right displays an overview of the selected companies and titles."),
+                     br(),
+                     img(src = "logo.png", width="40%", height="40%", alt = "levels.fyi Logo")
                    ),
                    mainPanel(
                      br(),
@@ -88,7 +92,9 @@ ui <- fluidPage(
 
                          checkboxInput(inputId = "hist", 
                                        label = "Show job salary over time", 
-                                       value = FALSE)
+                                       value = FALSE),
+                        br(),
+                        img(src = "logo.png", width="40%", height="40%", alt = "levels.fyi Logo")
                         ),
                      mainPanel(
                          plotOutput(outputId = "histogram", height = "450px", width = "800px"),
@@ -96,6 +102,7 @@ ui <- fluidPage(
                          plotOutput(outputId = "jobsalary", height = "450px", width = "800px")
                          
                         )
+                     
                     )
         ),
         # tabPanel("Fair Salary",
