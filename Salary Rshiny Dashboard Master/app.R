@@ -136,7 +136,7 @@ ui <- fluidPage(
                       ),
                       
                      mainPanel(
-                         plotOutput(outputId = "salary")
+                         plotOutput(outputId = "salary", height = "500px", width = "700px")
                      )
                   )
                   
@@ -367,7 +367,7 @@ server <- function(input, output) {
                        x = "") +
             theme_bw() +
             theme(title = element_text(size = 17, family = "sans"),
-                  #axis.text.x = element_text(size = 15),
+                  axis.text.x = element_text(size = 15),
                   axis.text.y = element_text(size = 15))
           p
       })
