@@ -288,7 +288,28 @@ let
 
 
 the_grouped = finaldata %>% group_by(title, company) %>% summarize(avg_sal = mean(basesalary))
+the_grouped
 
-the_grouped %>% filter(title %in% c("Data Scientist", "Software Engineer"), company %in% c("Amazon", "Spotify", "Google"))
+g_filter = the_grouped %>% filter(title %in% c("Data Scientist", "Software Engineer", "Human Resources"), 
+                                  company %in% c("Amazon", "Spotify", "Shopify")) %>%
+  summarize(ad = mean(avg_sal))
+g_filter
 
+test3 = finaldata %>% group_by(title) %>% summarize(avg_sal = mean(basesalary))
+test3
 
+p = ggplot(g_filter, aes(reorder(title, ad), fill = ad)) + 
+         geom_col(aes(y = ad), show.legend = FALSE) +
+         #facet_wrap(facets = company)
+         #geom_col(aes(y = mean_job_sal$avg_sal), show.legend = FALSE) +
+         #scale_y_continuous(labels = scales::dollar, breaks = c(0,25000,50000,75000,100000,125000)) +
+         coord_flip()
+       
+p = p + labs(title = "Average salary across job titles",
+             y = "Average Salary",
+             x = "") +
+   theme_bw() +
+   theme(title = element_text(size = 17, family = "sans"),
+         #axis.text.x = element_text(size = 15),
+         axis.text.y = element_text(size = 15))
+p

@@ -75,8 +75,8 @@ ui <- fluidPage(
                         p("The thin black line shows the average salary industry wide for the given job role.
                            The blue line indicates what the average compensation is at the specified company compared to the distribution and industry."),
                          hr(),
-                         
-                         #Input for Job title
+                        
+                        #Input for Job title
                          selectInput(inputId = "title", 
                                      label = "Select Job Title", 
                                      choices = df3$title, 
@@ -113,11 +113,19 @@ ui <- fluidPage(
          tabPanel("Salary Across Positions",
                   sidebarLayout( # Layout for Company-level tab
                       sidebarPanel(
-                          selectInput(inputId = "companies", 
+                        h4("Companies and the Salary Given for Each Role"),
+                        p("In this visual we can examine how the different jobs stack up to one another in a company.
+                          You can view how each company values the position based on salary given.
+                          You can choose between viewing the median or mean salary."),
+                        radioButtons(inputId = "avg_or_med",
+                                     label = "View Median or Mean Salary",
+                                     choices = c("Median", "Mean"),
+                                     selected = "Median"),
+                        selectInput(inputId = "company_jobs", 
                                       label = "Select Companies", 
                                       choices = companydata$company, 
                                       selected = "Amazon", 
-                                      multiple = TRUE, 
+                                      multiple = FALSE, 
                                       selectize=TRUE),
                           selectInput(inputId = "select_title", 
                                       label = "Select Job Title", 
@@ -125,7 +133,6 @@ ui <- fluidPage(
                                       selected = df3$title, 
                                       multiple = TRUE,
                                       selectize = TRUE)
-                          #sliderInput("range", "Years of Experience"),
                       ),
                       
                      mainPanel(
@@ -291,6 +298,9 @@ server <- function(input, output) {
     selected_job_title <- reactive({ input$title })
     
     job_titles <- reactive({ input$select_title })
+    
+    selected_company_jobs <- reactive({ input$company_jobs })
+    
 
     #For choosing company
     df_company <- reactive({
@@ -303,20 +313,31 @@ server <- function(input, output) {
         finaldata %>% filter(title == sjt)
     })
     
-    #To group by job title to get mean annual salary of each individual job 
-    df_salary = reactive({
-        finaldata %>% group_by(title) %>% 
-            summarize(avg_job_sal = mean(basesalary))
-        
-    })
-    
     #to group by title and company to get average salary across both
-     salary_makeup = reactive({
-       finaldata %>% group_by(title, company) %>% 
-         filter(title %in% job_titles(),
-                company %in% selected_company()) %>% 
-         summarize(avg_sal = mean(basesalary), .groups = "keep") 
+     df_title_company = reactive({
+       finaldata %>% 
+         group_by(title, company)
      })
+      
+     #To Choose between Mean and Median
+       salary_makeup = reactive({
+         df_tc = df_title_company() 
+         if(input$avg_or_med == "Median"){
+           df_tc = df_tc %>% 
+             summarize(avg_sal = median(basesalary)) %>% 
+             filter(title %in% job_titles(),
+                    company %in% selected_company_jobs()) %>%
+             summarize(ad = median(avg_sal))
+         }
+         else{
+           df_tc = df_tc %>% 
+             summarize(avg_sal = mean(basesalary)) %>% 
+             filter(title %in% job_titles(),
+                    company %in% selected_company_jobs()) %>%
+             summarize(ad = mean(avg_sal))
+         }
+         return(df_tc)
+       })
      
      #salary_type <- reactive({
      #  if(input$salary_type == "Base Salary") {
@@ -330,39 +351,17 @@ server <- function(input, output) {
      
      ############## ~~~~~~~~~~~~~~Average Salary Across Jobs in each Company ~~~~~~~~~~~~~~~~~~~~~~################ 
      
-     #df_title_all<- reactive({ # create reactive for company input
-    #   finaldata %>% filter(title %in% input$companies)
-     #})
-     
-     
-     #df_gr <- reactive({ # create reactive for title input
-     # 
-     #  if(input$select_title == "All") { # if/else for "All" option
-    #     title_df = df_title_company()
-     #  } else {
-      #   title_df = df_title_company() %>%
-      #     filter(title == input$select_title)
-       #}
-      # 
-      # return(title_df)
-     #})
-     
      output$salary = renderPlot({
-       dfs = df_salary()
        sm = salary_makeup()
          
-         #mean_job_sal = finaldata %>% group_by(company) %>% 
-         #filter(company == selected_company()) %>% 
-         #summarize(avg_sal = mean(basesalary))
          
-         p = ggplot(sm, aes(reorder(title, avg_sal), fill = avg_sal)) + 
-          geom_col(aes(y = avg_sal), show.legend = FALSE) +
+         p = ggplot(sm, aes(reorder(title, ad), fill = ad)) + 
+          geom_col(aes(y = ad), show.legend = FALSE) +
            #facet_wrap(facets = company)
            #geom_col(aes(y = mean_job_sal$avg_sal), show.legend = FALSE) +
-           scale_y_continuous(labels = scales::dollar, breaks = c(0,25000,50000,75000,100000,125000)) +
+           scale_y_continuous(labels = scales::dollar) +
            coord_flip()
              
-         
           p = p + labs(title = "Average salary across job titles",
                        y = "Average Salary",
                        x = "") +
@@ -373,6 +372,7 @@ server <- function(input, output) {
           p
       })
     
+     
      ############## Histogram of Annual Salary ####################
      output$histogram = 
          renderPlot({
