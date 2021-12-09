@@ -285,3 +285,10 @@ test = ggplot(adjusted_df, mapping = aes(x = totalyearlycompensation)) +
 
 let = ggplot_build(test)
 let
+
+
+the_grouped = finaldata %>% group_by(title, company) %>% summarize(avg_sal = mean(basesalary))
+
+the_grouped %>% filter(title %in% c("Data Scientist", "Software Engineer"), company %in% c("Amazon", "Spotify", "Google"))
+
+
