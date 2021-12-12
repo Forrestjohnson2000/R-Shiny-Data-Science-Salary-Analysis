@@ -33,7 +33,7 @@ ui <- fluidPage(
                      p("Explore the tabs in this app to compare the top companies employing data scientists and related roles."),
                      hr(),
                      radioButtons("overview_display", "What would you like to display?",
-                                  choices = c("Number of Jobs", "Average Yearly Compensation")),
+                                  choices = c("Number of Jobs", "Median Base Salary")),
                      br(),
                      img(src = "logo.png", width="40%", height="40%", alt = "levels.fyi Logo")
                    ),
@@ -163,7 +163,7 @@ server <- function(input, output) {
   data_overview <- reactive({
     if(input$overview_display == "Number of Jobs") {
       df_counts
-    } else if(input$overview_display == "Average Yearly Compensation") {
+    } else if(input$overview_display == "Median Base Salary") {
       df_salaries
     }
   })
@@ -176,13 +176,13 @@ server <- function(input, output) {
         labs(title = "Data Science Industry Overview",
              subtitle = "Top Ten Companies by Number of Job Postings",
              y='Number of Jobs', x ='')
-    } else if(input$overview_display == "Average Yearly Compensation") {
+    } else if(input$overview_display == "Median Base Salary") {
       gg <- df_salaries %>% 
-        ggplot(aes(x = reorder(company, avg_salary),
-                   y = avg_salary)) +
+        ggplot(aes(x = reorder(company, med_salary),
+                   y = med_salary)) +
         labs(title = "Data Science Industry Overview",
-             subtitle = "Top Ten Companies by Average Yearly Compensation",
-             y='Average Yearly Compensation', x ='') +
+             subtitle = "Top Ten Companies by Median Base Salary",
+             y='Median Base Salary', x ='') +
         scale_y_continuous(labels = scales::dollar)
     }
     
@@ -220,9 +220,9 @@ server <- function(input, output) {
         filter(title == input$map_title)
     }
     
-    df_map <- df_map %>% # create count and avg_salary columns
-      group_by(company, avg_income, title, lat, long) %>%
-      summarise(count=n(), avg_salary = mean(basesalary)) %>%
+    df_map <- df_map %>% # create count and med_salary columns
+      group_by(company, med_company_salary, title, lat, long) %>%
+      summarise(count=n(), med_salary = median(basesalary)) %>%
       ungroup()
     
     return(df_map)
@@ -231,14 +231,14 @@ server <- function(input, output) {
   selected_title <- reactive({ input$map_title }) # create reactive to use for text output
   
   output$shading <- renderText({
-    text <- paste0("The shading of each point on the map is currently conveying the average salary of each selected Charlotte company",
+    text <- paste0("The shading of each point on the map is currently conveying the median salary of each selected Charlotte company",
                    " that employs the role: ",
                    selected_title(),". At least 2 selected companies must employ this role for shading to appear.")
   })
   
   mypal <- reactive({ # reactive for legend color scale
     dfg = df_groups()
-    colorNumeric(palette = c("purple","orange"), domain = dfg$avg_income, reverse=TRUE)
+    colorNumeric(palette = c("purple","orange"), domain = dfg$med_company_salary, reverse=TRUE)
   })
   
   output$map <- renderLeaflet({ # map output
@@ -256,7 +256,7 @@ server <- function(input, output) {
     
     labels <- sprintf( # create labels for popups
       "<strong>%s</strong><br/>$%g",
-      df_map$company, df_map$avg_salary
+      df_map$company, df_map$med_salary
     ) %>% lapply(htmltools::HTML)
     labels
     
@@ -272,15 +272,15 @@ server <- function(input, output) {
         addProviderTiles("CartoDB.Positron") %>%
         addCircleMarkers(radius = 8, 
                          weight = 1, 
-                         color = ~mypal()(df_map$avg_income),
+                         color = ~mypal()(df_map$med_company_salary),
                          stroke = FALSE, 
                          fillOpacity = 0.95,
                          label =labels,
                          labelOptions = labelOptions(noHide = F, offset=c(0,-12)))  %>%
         addLegend("bottomleft",
-                  title = "Average Yearly Compensation per Company",
+                  title = "Median Base Salary per Company",
                   pal = mypal(),
-                  values = df_map$avg_income,
+                  values = df_map$med_company_salary,
                   layerId = "legend",
                   opacity = 0.90,
                   labFormat = labelFormat(prefix="$"))
@@ -289,10 +289,11 @@ server <- function(input, output) {
   
   
   output$view <- renderTable({ # display data table
-    head(df_groups()[c("company","title","count","avg_salary")],n=50)
+    head(df_groups()[c("company","title","count","med_salary")],n=50) %>%
+      rename(Company = company, Title = title, Count = count, "Median Salary" = med_salary)
   })
   
-  ############ REactive Setup Section #####################################
+  ############ Reactive Setup Section #####################################
     selected_company <- reactive({ input$companies })
     
     selected_job_title <- reactive({ input$title })

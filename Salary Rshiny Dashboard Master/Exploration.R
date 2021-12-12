@@ -28,8 +28,8 @@ df_counts <- as.data.frame(df_counts)
 
 df_salaries <- df1 %>% # create average salary df for overview
   group_by(company) %>%
-  summarise(avg_salary = mean(totalyearlycompensation)) %>% 
-  arrange(desc(avg_salary)) %>% slice(1:10)
+  summarise(med_salary = median(basesalary)) %>% 
+  arrange(desc(med_salary)) %>% slice(1:10)
 
 df_salaries <- as.data.frame(df_salaries)
 
@@ -61,7 +61,7 @@ charlotte_data <- df1 %>% filter(city == "Charlotte")
 
 # summarize companies in Charlotte that employ at least 2 roles
 
-company_group <- charlotte_data %>% group_by(company) %>% summarize(count = n(), avg_income = mean(totalyearlycompensation)) %>% 
+company_group <- charlotte_data %>% group_by(company) %>% summarize(count = n(), med_company_salary = median(basesalary)) %>% 
   filter(count > 2) %>% arrange(desc(count))
 
 # merge Charlotte data with the comoany coordinate data
@@ -72,9 +72,12 @@ final_df  <- charlotte_data %>% left_join(charlotte_location, by = "company")
 
 final_df <- final_df %>% filter(company %in% company_group$company)
 
+company_med_calc <- final_df %>% # create count and med_company_salary columns
+  group_by(company) %>%
+  summarise(med_company_salary = median(basesalary)) %>%
+  ungroup()
 
-
-
+final_df  <- final_df %>% left_join(company_med_calc, by = "company")
 
 
 ############################ FORREST --------------------------------------------------------- 
