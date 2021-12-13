@@ -28,8 +28,8 @@ df_counts <- as.data.frame(df_counts)
 
 df_salaries <- df1 %>% # create average salary df for overview
   group_by(company) %>%
-  summarise(avg_salary = mean(totalyearlycompensation)) %>% 
-  arrange(desc(avg_salary)) %>% slice(1:10)
+  summarise(med_salary = median(basesalary)) %>% 
+  arrange(desc(med_salary)) %>% slice(1:10)
 
 df_salaries <- as.data.frame(df_salaries)
 
@@ -61,7 +61,7 @@ charlotte_data <- df1 %>% filter(city == "Charlotte")
 
 # summarize companies in Charlotte that employ at least 2 roles
 
-company_group <- charlotte_data %>% group_by(company) %>% summarize(count = n(), avg_income = mean(totalyearlycompensation)) %>% 
+company_group <- charlotte_data %>% group_by(company) %>% summarize(count = n(), med_company_salary = median(basesalary)) %>% 
   filter(count > 2) %>% arrange(desc(count))
 
 # merge Charlotte data with the comoany coordinate data
@@ -72,9 +72,12 @@ final_df  <- charlotte_data %>% left_join(charlotte_location, by = "company")
 
 final_df <- final_df %>% filter(company %in% company_group$company)
 
+company_med_calc <- final_df %>% # create count and med_company_salary columns
+  group_by(company) %>%
+  summarise(med_company_salary = median(basesalary)) %>%
+  ungroup()
 
-
-
+final_df  <- final_df %>% left_join(company_med_calc, by = "company")
 
 
 ############################ FORREST --------------------------------------------------------- 
@@ -285,3 +288,31 @@ test = ggplot(adjusted_df, mapping = aes(x = totalyearlycompensation)) +
 
 let = ggplot_build(test)
 let
+
+
+the_grouped = finaldata %>% group_by(title, company) %>% summarize(avg_sal = mean(basesalary))
+the_grouped
+
+g_filter = the_grouped %>% filter(title %in% c("Data Scientist", "Software Engineer", "Human Resources"), 
+                                  company %in% c("Amazon", "Spotify", "Shopify")) %>%
+  summarize(ad = mean(avg_sal))
+g_filter
+
+test3 = finaldata %>% group_by(title) %>% summarize(avg_sal = mean(basesalary))
+test3
+
+p = ggplot(g_filter, aes(reorder(title, ad), fill = ad)) + 
+         geom_col(aes(y = ad), show.legend = FALSE) +
+         #facet_wrap(facets = company)
+         #geom_col(aes(y = mean_job_sal$avg_sal), show.legend = FALSE) +
+         #scale_y_continuous(labels = scales::dollar, breaks = c(0,25000,50000,75000,100000,125000)) +
+         coord_flip()
+       
+p = p + labs(title = "Average salary across job titles",
+             y = "Average Salary",
+             x = "") +
+   theme_bw() +
+   theme(title = element_text(size = 17, family = "sans"),
+         #axis.text.x = element_text(size = 15),
+         axis.text.y = element_text(size = 15))
+p

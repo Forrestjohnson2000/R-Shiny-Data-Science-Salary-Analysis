@@ -33,7 +33,7 @@ ui <- fluidPage(
                      p("Explore the tabs in this app to compare the top companies employing data scientists and related roles."),
                      hr(),
                      radioButtons("overview_display", "What would you like to display?",
-                                  choices = c("Number of Jobs", "Average Yearly Compensation")),
+                                  choices = c("Number of Jobs", "Median Base Salary")),
                      br(),
                      img(src = "logo.png", width="40%", height="40%", alt = "levels.fyi Logo")
                    ),
@@ -75,8 +75,8 @@ ui <- fluidPage(
                         p("The thin black line shows the average salary industry wide for the given job role.
                            The blue line indicates what the average compensation is at the specified company compared to the distribution and industry."),
                          hr(),
-                         
-                         #Input for Job title
+                        
+                        #Input for Job title
                          selectInput(inputId = "title", 
                                      label = "Select Job Title", 
                                      choices = df3$title, 
@@ -90,7 +90,12 @@ ui <- fluidPage(
                                      multiple = FALSE, 
                                      selectize=TRUE),
 
-                         checkboxInput(inputId = "hist", 
+                        #radioButtons(inputId = "salary_type", 
+                        #             label = "What type of salary to view?", 
+                        #             choices = c("Base Salary", "Combined Salary (including stock options and bonuses)"), 
+                        #             selected = "Base Salary"),  
+                        
+                        checkboxInput(inputId = "hist", 
                                        label = "Show job salary over time", 
                                        value = FALSE),
                         br(),
@@ -105,29 +110,37 @@ ui <- fluidPage(
                      
                     )
         ),
-        # tabPanel("Fair Salary",
-        #          sidebarLayout( # Layout for Company-level tab
-        #              sidebarPanel(
-        #                  selectInput(inputId = "companies", 
-        #                              label = "Select Companies", 
-        #                              choices = companydata$company, 
-        #                              selected = "Amazon", 
-        #                              multiple = TRUE, 
-        #                              selectize=TRUE),
-        #                  #selectInput(inputId = "title", 
-        #                  #            label = "Select Job Title", 
-        #                  #            choices = df3$title, 
-        #                  #            selected = "Data Scientist", 
-        #                  #            multiple = TRUE)
-        #                  #sliderInput("range", "Years of Experience"),
-        #              ),
-        #              
-        #             mainPanel(
-        #                 plotOutput(outputId = "salary")
-        #             )
-        #          )
-        #          
-        # ),
+         tabPanel("Salary Across Positions",
+                  sidebarLayout( # Layout for Company-level tab
+                      sidebarPanel(
+                        h4("Companies and the Salary Given for Each Role"),
+                        p("In this visual we can examine how the different jobs stack up to one another in a company.
+                          You can view how each company values the position based on salary given.
+                          You can choose between viewing the median or mean salary."),
+                        radioButtons(inputId = "avg_or_med",
+                                     label = "View Median or Mean Salary",
+                                     choices = c("Median", "Mean"),
+                                     selected = "Median"),
+                        selectInput(inputId = "company_jobs", 
+                                      label = "Select Companies", 
+                                      choices = companydata$company, 
+                                      selected = "Amazon", 
+                                      multiple = FALSE, 
+                                      selectize=TRUE),
+                          selectInput(inputId = "select_title", 
+                                      label = "Select Job Title", 
+                                      choices = df3$title, 
+                                      selected = df3$title, 
+                                      multiple = TRUE,
+                                      selectize = TRUE)
+                      ),
+                      
+                     mainPanel(
+                         plotOutput(outputId = "salary", height = "500px", width = "700px")
+                     )
+                  )
+                  
+         ),
         tabPanel("About",
                 br(),
                 column(1),
@@ -150,7 +163,7 @@ server <- function(input, output) {
   data_overview <- reactive({
     if(input$overview_display == "Number of Jobs") {
       df_counts
-    } else if(input$overview_display == "Average Yearly Compensation") {
+    } else if(input$overview_display == "Median Base Salary") {
       df_salaries
     }
   })
@@ -163,13 +176,13 @@ server <- function(input, output) {
         labs(title = "Data Science Industry Overview",
              subtitle = "Top Ten Companies by Number of Job Postings",
              y='Number of Jobs', x ='')
-    } else if(input$overview_display == "Average Yearly Compensation") {
+    } else if(input$overview_display == "Median Base Salary") {
       gg <- df_salaries %>% 
-        ggplot(aes(x = reorder(company, avg_salary),
-                   y = avg_salary)) +
+        ggplot(aes(x = reorder(company, med_salary),
+                   y = med_salary)) +
         labs(title = "Data Science Industry Overview",
-             subtitle = "Top Ten Companies by Average Yearly Compensation",
-             y='Average Yearly Compensation', x ='') +
+             subtitle = "Top Ten Companies by Median Base Salary",
+             y='Median Base Salary', x ='') +
         scale_y_continuous(labels = scales::dollar)
     }
     
@@ -207,9 +220,9 @@ server <- function(input, output) {
         filter(title == input$map_title)
     }
     
-    df_map <- df_map %>% # create count and avg_salary columns
-      group_by(company, avg_income, title, lat, long) %>%
-      summarise(count=n(), avg_salary = mean(totalyearlycompensation)) %>%
+    df_map <- df_map %>% # create count and med_salary columns
+      group_by(company, med_company_salary, title, lat, long) %>%
+      summarise(count=n(), med_salary = median(basesalary)) %>%
       ungroup()
     
     return(df_map)
@@ -218,14 +231,14 @@ server <- function(input, output) {
   selected_title <- reactive({ input$map_title }) # create reactive to use for text output
   
   output$shading <- renderText({
-    text <- paste0("The shading of each point on the map is currently conveying the average salary of each selected Charlotte company",
+    text <- paste0("The shading of each point on the map is currently conveying the median salary of each selected Charlotte company",
                    " that employs the role: ",
                    selected_title(),". At least 2 selected companies must employ this role for shading to appear.")
   })
   
   mypal <- reactive({ # reactive for legend color scale
     dfg = df_groups()
-    colorNumeric(palette = c("purple","orange"), domain = dfg$avg_income, reverse=TRUE)
+    colorNumeric(palette = c("purple","orange"), domain = dfg$med_company_salary, reverse=TRUE)
   })
   
   output$map <- renderLeaflet({ # map output
@@ -243,7 +256,7 @@ server <- function(input, output) {
     
     labels <- sprintf( # create labels for popups
       "<strong>%s</strong><br/>$%g",
-      df_map$company, df_map$avg_salary
+      df_map$company, df_map$med_salary
     ) %>% lapply(htmltools::HTML)
     labels
     
@@ -259,15 +272,15 @@ server <- function(input, output) {
         addProviderTiles("CartoDB.Positron") %>%
         addCircleMarkers(radius = 8, 
                          weight = 1, 
-                         color = ~mypal()(df_map$avg_income),
+                         color = ~mypal()(df_map$med_company_salary),
                          stroke = FALSE, 
                          fillOpacity = 0.95,
                          label =labels,
                          labelOptions = labelOptions(noHide = F, offset=c(0,-12)))  %>%
         addLegend("bottomleft",
-                  title = "Average Yearly Compensation per Company",
+                  title = "Median Base Salary per Company",
                   pal = mypal(),
-                  values = df_map$avg_income,
+                  values = df_map$med_company_salary,
                   layerId = "legend",
                   opacity = 0.90,
                   labFormat = labelFormat(prefix="$"))
@@ -276,89 +289,110 @@ server <- function(input, output) {
   
   
   output$view <- renderTable({ # display data table
-    head(df_groups()[c("company","title","count","avg_salary")],n=50)
+    head(df_groups()[c("company","title","count","med_salary")],n=50) %>%
+      rename(Company = company, Title = title, Count = count, "Median Salary" = med_salary)
   })
   
-  ############ REactive Setup Section #####################################
+  ############ Reactive Setup Section #####################################
     selected_company <- reactive({ input$companies })
     
     selected_job_title <- reactive({ input$title })
-    #filteredData <- reactive({
-    #    df1[df1$min_exp >= input$range[1] & df1$max_exp <= input$range[2],]
-    #})
+    
+    job_titles <- reactive({ input$select_title })
+    
+    selected_company_jobs <- reactive({ input$company_jobs })
     
 
-    #For choosing company and title
+    #For choosing company
     df_company <- reactive({
         finaldata %>% filter(company == selected_company())#, title == selected_job_title())
     })
     
-    #For choosing only Title
+    #For choosing Title
     df_title <- reactive({
         sjt = selected_job_title()
         finaldata %>% filter(title == sjt)
     })
     
-    #To group by job title to get mean annual salary of each individual job 
-    df_salary = reactive({
-        finaldata %>% group_by(title) %>% 
-            summarize(avg_job_sal = mean(totalyearlycompensation))
-        
-    })
-    
-     salary_makeup <- reactive({ 
-         df_company() %>%
-         group_by(title) %>%
-         summarise(avg_sal = mean(totalyearlycompensation))
+    #to group by title and company to get average salary across both
+     df_title_company = reactive({
+       finaldata %>% 
+         group_by(title, company)
      })
-    
-     ############## Average Salary Across Jobs in each Company ################ 
+      
+     #To Choose between Mean and Median
+       salary_makeup = reactive({
+         df_tc = df_title_company() 
+         if(input$avg_or_med == "Median"){
+           df_tc = df_tc %>% 
+             summarize(avg_sal = median(basesalary)) %>% 
+             filter(title %in% job_titles(),
+                    company %in% selected_company_jobs()) %>%
+             summarize(ad = median(avg_sal))
+         }
+         else{
+           df_tc = df_tc %>% 
+             summarize(avg_sal = mean(basesalary)) %>% 
+             filter(title %in% job_titles(),
+                    company %in% selected_company_jobs()) %>%
+             summarize(ad = mean(avg_sal))
+         }
+         return(df_tc)
+       })
      
-     #output$salary = renderPlot({
-     #    dfs = df_salary()
-     #    sm = salary_makeup()
-     #    
-     #    #mean_job_sal = finaldata %>% filter(title == selected_job_title(), company == selected_company()) %>% 
-     #    #    summarize(c_avg = mean(totalyearlycompensation))
-     #    mean_job_sal = mean(dfs$totalyearlycompensation)
-     #    
-     #    p = ggplot(sm, aes(reorder(title, avg_sal), fill = avg_sal)) + 
-     #        geom_col(aes(y = avg_sal), show.legend = FALSE) +
-     #        #geom_col(aes(y = mean_job_sal), show.legend = FALSE) +
-     #        coord_flip() +
-     #        scale_y_discrete(labels = scales::dollar)
-     #    
-     #     p + labs(title = "Average salary across job titles",
-     #              subtitle = input$companies) +
-     #         theme_bw() + labs(
-     #            title = "",
-     #            y = "Average Salary",
-     #            x = "",
-     #            
-     #         ) +
-     #         theme(title = element_text(size = 17),
-     #               axis.text.x = element_text(size = 15),
-     #               axis.text.y = element_text(size = 15))
-     # })
+     #salary_type <- reactive({
+     #  if(input$salary_type == "Base Salary") {
+     #    salary = basesalary
+    #   } else{
+     #    salary = totalyearlycompensation
+     #  }
+     #  return(salary)
+     #})
+     
+     
+     ############## ~~~~~~~~~~~~~~Average Salary Across Jobs in each Company ~~~~~~~~~~~~~~~~~~~~~~################ 
+     
+     output$salary = renderPlot({
+       sm = salary_makeup()
+         
+         
+         p = ggplot(sm, aes(reorder(title, ad), fill = ad)) + 
+          geom_col(aes(y = ad), show.legend = FALSE) +
+           #facet_wrap(facets = company)
+           #geom_col(aes(y = mean_job_sal$avg_sal), show.legend = FALSE) +
+           scale_y_continuous(labels = scales::dollar) +
+           coord_flip()
+             
+          p = p + labs(title = "Average salary across job titles",
+                       y = "Average Salary",
+                       x = "") +
+            theme_bw() +
+            theme(title = element_text(size = 17, family = "sans"),
+                  axis.text.x = element_text(size = 15),
+                  axis.text.y = element_text(size = 15))
+          p
+      })
     
+     
      ############## Histogram of Annual Salary ####################
      output$histogram = 
          renderPlot({
+             
              dft = df_title()
-             mean_job_sal = finaldata %>% filter(title == selected_job_title(), company == selected_company()) %>% 
-                 summarize(c_avg = round(mean(totalyearlycompensation),0))
+             median_job_sal = finaldata %>% filter(title == selected_job_title(), company == selected_company()) %>% 
+                 summarize(c_med = round(median(basesalary),0))
              
              #Remove outliers:
-             IQR = IQR(dft$totalyearlycompensation)
-             Q1 = quantile(dft$totalyearlycompensation, .25)
-             Q3 = quantile(dft$totalyearlycompensation, .75)
-             adjusted_df = subset(dft, dft$totalyearlycompensation > (Q1 - 5*IQR) & 
-                                      dft$totalyearlycompensation < (Q3 + 5*IQR))
+             IQR = IQR(dft$basesalary)
+             Q1 = quantile(dft$basesalary, .25)
+             Q3 = quantile(dft$basesalary, .75)
+             adjusted_df = subset(dft, dft$basesalary > (Q1 - 5*IQR) & 
+                                      dft$basesalary < (Q3 + 5*IQR))
              
-             p = ggplot(adjusted_df, mapping = aes(x = totalyearlycompensation)) + 
+             p = ggplot(adjusted_df, mapping = aes(x = basesalary)) + 
                  geom_histogram(aes(fill = title), 
                                 #bins = 20, 
-                                binwidth = 100000, 
+                                binwidth = 50000, 
                                 show.legend = FALSE) +
                  scale_x_continuous(labels = scales::dollar)
                  
@@ -370,10 +404,10 @@ server <- function(input, output) {
                  theme(title = element_text(size = 17, family = "sans"),
                        axis.text.x = element_text(size = 15),
                        axis.text.y = element_text(size = 15)) +
-                 geom_vline(aes(xintercept = mean_job_sal$c_avg), 
+                 geom_vline(aes(xintercept = median_job_sal$c_med), 
                             color = "blue", 
                             size = 1) +
-                geom_vline(aes(xintercept = mean(dft$totalyearlycompensation)),
+                geom_vline(aes(xintercept = median(dft$basesalary)),
                            color = "black",
                            size = 0.3)
             ##Create adjustable y value:
@@ -382,15 +416,15 @@ server <- function(input, output) {
             
             
              p + annotate("text", size = 5, 
-                          x = mean_job_sal$c_avg + 3000, 
+                          x = median_job_sal$c_med + 5000, 
                           y = scale_y[2],
                           hjust = 0, vjust = 1,
-                          label = "Average salary \noffered at company") +
+                          label = "Median salary \noffered at company") +
                  annotate("text", size = 5, 
-                          x = mean_job_sal$c_avg + 3000, 
+                          x = median_job_sal$c_med + 5000, 
                           y = scale_y[2],
                           hjust = 0, vjust = 5,
-                          label = scales::dollar(mean_job_sal$c_avg))
+                          label = scales::dollar(median_job_sal$c_med))
              
              #print(max(p[["data"]][[1]][["count"]]))
          })
@@ -399,7 +433,10 @@ server <- function(input, output) {
      output$jobsalary = renderPlot({
          if(input$hist){
              dft1 = df_title()
-             ggplot(dft1, mapping = aes(timestamp, totalyearlycompensation, color = title)) + 
+             mean_job_sal = finaldata %>% filter(title == selected_job_title(), company == selected_company()) %>% 
+               summarize(c_avg = round(mean(basesalary),0))
+             
+             p1 = ggplot(dft1, mapping = aes(timestamp, basesalary, color = title)) + 
                 geom_smooth(alpha = .1, show.legend = FALSE) +
                scale_y_continuous(labels = scales::dollar) +
                 labs(title = "Annual salary over time",
@@ -408,6 +445,7 @@ server <- function(input, output) {
                 theme(title = element_text(size = 17, family = "sans"),
                    axis.text.x = element_text(size = 15),
                    axis.text.y = element_text(size = 15))
+             p1 #+ geom_smooth(aes(mean_job_sal$c_avg), show.legend = FALSE)
          }
          
      }) 
